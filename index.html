@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Private Notification Sender</title>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; padding: 32px 16px; display: grid; place-items: center;
+      background: radial-gradient(ellipse at top, #202b42 0%, #10131b 48%, #090b10 100%);
+      color: #f5f7fb;
+    }
+    .shell { width: min(100%, 520px); }
+    .brand { display:flex; align-items:center; justify-content:space-between; margin: 0 2px 18px; }
+    .brand strong { letter-spacing: .16em; font-size: 13px; }
+    .status { color:#9be5b2; font-size:12px; border:1px solid #315b43; background:#14271d; padding:6px 10px; border-radius:99px; }
+    .panel { background:rgba(23,28,39,.94); border:1px solid #30394b; border-radius:22px; padding:24px; box-shadow:0 24px 80px #0008; }
+    h1 { font-size:26px; margin:0 0 7px; letter-spacing:-.04em; }
+    .sub { color:#aab3c3; font-size:14px; line-height:1.5; margin:0 0 22px; }
+    label { display:block; color:#dce2ed; font-size:13px; font-weight:600; margin:16px 0 8px; }
+    input, textarea {
+      display:block; width:100%; border:1px solid #3a4559; border-radius:12px; padding:13px 14px;
+      color:#f7f9fc; background:#101620; font:inherit; font-size:14px; outline:none;
+    }
+    input:focus, textarea:focus { border-color:#8aa9ff; box-shadow:0 0 0 3px #7899ff22; }
+    textarea { min-height:105px; resize:vertical; line-height:1.5; }
+    .hint { color:#8490a3; font-size:11px; margin-top:7px; }
+    button {
+      width:100%; margin-top:20px; border:0; border-radius:12px; padding:14px 16px;
+      background:#f4f6fb; color:#101521; font-size:14px; font-weight:750; cursor:pointer;
+    }
+    button:disabled { opacity:.55; cursor:wait; }
+    #statusMessage { min-height:20px; margin:13px 2px 0; font-size:13px; color:#b9c3d4; }
+    .preview { margin-top:18px; border-radius:17px; background:linear-gradient(145deg,#e8e8eb,#cfd0d5); color:#17181d; padding:15px; }
+    .previewTop { display:flex; align-items:center; gap:9px; color:#54565d; font-size:12px; }
+    .appIcon { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:#202633; color:white; font-weight:800; }
+    .previewTime { margin-left:auto; }
+    .previewTitle { font-size:15px; font-weight:750; margin:10px 0 3px; }
+    .previewBody { font-size:14px; line-height:1.35; color:#363840; overflow-wrap:anywhere; }
+    .foot { text-align:center; color:#758095; font-size:11px; margin:15px 0 0; line-height:1.5; }
+    @media (max-width:420px) { .panel { padding:19px; } h1 {font-size:23px;} }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand"><strong>PRIVATE / NOTIFICATIONS</strong><span class="status">PERSONAL USE</span></div>
+    <section class="panel">
+      <h1>Send yourself an email</h1>
+      <p class="sub">Create a custom email that can appear as a notification on your iPhone. The recipient is configured in your EmailJS template, not entered here.</p>
+
+      <label for="subject">Notification title</label>
+      <input id="subject" maxlength="90" value="Payout approved" placeholder="e.g. Payout approved">
+
+      <label for="message">Notification message</label>
+      <textarea id="message" maxlength="500" placeholder="Write your notification...">Your payout of $1,000 has been approved.</textarea>
+      <div class="hint">Tip: the email subject becomes the notification title. The first line of the email is usually shown in the preview.</div>
+
+      <button id="sendBtn" type="button">Send to my iPhone</button>
+      <div id="statusMessage" role="status" aria-live="polite"></div>
+
+      <div class="preview" aria-label="Notification preview">
+        <div class="previewTop"><span class="appIcon">N</span><strong>MAIL</strong><span class="previewTime">now</span></div>
+        <div class="previewTitle" id="previewSubject">Payout approved</div>
+        <div class="previewBody" id="previewMessage">Your payout of $1,000 has been approved.</div>
+      </div>
+    </section>
+    <p class="foot">This is a personal email tool. It does not create or verify real payouts, payments, or account activity.</p>
+  </main>
+
+  <script>
+    // Add your EmailJS IDs here after following SETUP.txt.
+    const EMAILJS_PUBLIC_KEY = "YOUR_PUBLIC_KEY";
+    const EMAILJS_SERVICE_ID = "YOUR_SERVICE_ID";
+    const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";
+
+    const subjectInput = document.getElementById("subject");
+    const messageInput = document.getElementById("message");
+    const previewSubject = document.getElementById("previewSubject");
+    const previewMessage = document.getElementById("previewMessage");
+    const sendBtn = document.getElementById("sendBtn");
+    const statusMessage = document.getElementById("statusMessage");
+
+    function updatePreview() {
+      previewSubject.textContent = subjectInput.value.trim() || "Notification title";
+      previewMessage.textContent = messageInput.value.trim() || "Your message will appear here.";
+    }
+    subjectInput.addEventListener("input", updatePreview);
+    messageInput.addEventListener("input", updatePreview);
+
+    sendBtn.addEventListener("click", async () => {
+      const subject = subjectInput.value.trim();
+      const message = messageInput.value.trim();
+
+      if (!subject || !message) {
+        statusMessage.textContent = "Add a title and message first.";
+        return;
+      }
+      if ([EMAILJS_PUBLIC_KEY, EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID].some(v => v.startsWith("YOUR_"))) {
+        statusMessage.textContent = "Setup needed: add your three EmailJS IDs in this file first.";
+        return;
+      }
+
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Sending…";
+      statusMessage.textContent = "";
+
+      try {
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          subject: subject,
+          message: message
+        }, { publicKey: EMAILJS_PUBLIC_KEY });
+        statusMessage.textContent = "Email sent. Check your iPhone Mail/Gmail notifications.";
+      } catch (error) {
+        console.error(error);
+        statusMessage.textContent = "Could not send. Check your EmailJS IDs, template variables, and service connection.";
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send to my iPhone";
+      }
+    });
+  </script>
+</body>
+</html>
